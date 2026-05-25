@@ -26,6 +26,20 @@ class AppSettings(BaseModel):
     fail_on: Severity = Severity.HIGH
     min_confidence: Confidence = Confidence.MEDIUM
     scope: ScanScope = ScanScope.FULL
+    changed_from: str | None = None
+    changed_to: str | None = None
+    json_output: Path | None = None
+    sarif_output: Path | None = None
+    markdown_output: Path | None = None
+    artifacts_dir: Path = Path("finalreview-artifacts")
+    cache_dir: Path | None = Path(".finalreview-cache")
+    max_llm_calls: int = 12
+    concurrency: int = 4
+    timeout_seconds: int = 120
+    offline_enricher: OfflineEnricherMode = OfflineEnricherMode.AUTO
+    whole_file_upload: bool = True
+    max_candidate_bytes: int = 12000
+    max_evidence_chars: int = 4000
     scan_path: Path = Path(".")
 
 
@@ -43,7 +57,20 @@ class EnvironmentSettings(BaseSettings):
     fail_on: Severity | None = None
     min_confidence: Confidence | None = None
     scope: ScanScope | None = None
+    changed_from: str | None = None
+    changed_to: str | None = None
+    json_output: Path | None = None
+    sarif_output: Path | None = None
+    markdown_output: Path | None = None
+    artifacts_dir: Path | None = None
     cache_dir: Path | None = None
+    max_llm_calls: int | None = None
+    concurrency: int | None = None
+    timeout_seconds: int | None = None
+    offline_enricher: OfflineEnricherMode | None = None
+    whole_file_upload: bool | None = None
+    max_candidate_bytes: int | None = None
+    max_evidence_chars: int | None = None
 
 
 def _normalize_config_payload(payload: dict[str, Any]) -> dict[str, Any]:
@@ -97,7 +124,7 @@ def _resolve_payload_paths(payload: dict[str, Any], base_dir: Path | None) -> di
     if base_dir is None:
         return payload
     resolved = dict(payload)
-    for name in ("cache_dir", ):
+    for name in ("json_output", "sarif_output", "markdown_output", "artifacts_dir", "cache_dir"):
         value = resolved.get(name)
         if isinstance(value, str):
             path = Path(value)

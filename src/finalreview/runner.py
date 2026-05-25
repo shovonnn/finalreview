@@ -3,6 +3,7 @@ from __future__ import annotations
 import subprocess
 from pathlib import Path
 
+from .agent import run_agent_review
 from .config import AppSettings
 from .enrichers import collect_external_findings
 from .exceptions import ConfigurationError, ScanRuntimeError
@@ -50,9 +51,6 @@ def _git_diff_paths(root: Path, changed_from: str | None, changed_to: str | None
             "Diff scope requires a readable git repository and valid refs."
         ) from exc
     return {line.strip() for line in output.splitlines() if line.strip()}
-
-def run_agent_review(summary, signals, external_findings, settings, provider):
-    raise NotImplementedError
 
 def run_scan(settings: AppSettings) -> ScanResult:
     root = settings.scan_path.resolve()
