@@ -8,6 +8,7 @@ from .enrichers import collect_external_findings
 from .exceptions import ConfigurationError, ScanRuntimeError
 from .inventory import build_repository_summary
 from .models import ScanResult, ScanScope
+from .providers.factory import create_provider
 from .reporting import write_json_report, write_markdown_report, write_sarif_report
 from .signal import run_deterministic_checks
 from .utils import ensure_directory
@@ -52,10 +53,6 @@ def _git_diff_paths(root: Path, changed_from: str | None, changed_to: str | None
 
 def run_agent_review(summary, signals, external_findings, settings, provider):
     raise NotImplementedError
-
-def create_provider(settings):
-    raise NotImplementedError
-
 
 def run_scan(settings: AppSettings) -> ScanResult:
     root = settings.scan_path.resolve()
