@@ -2,22 +2,24 @@ from __future__ import annotations
 
 import os
 import platform
+from importlib.util import find_spec
 from pathlib import Path
 
 import typer
 from rich.console import Console
-from .config import AppSettings, load_settings, resolve_api_key_env
-from .reporting import print_console_report
-from .runner import run_scan
-from .exceptions import ConfigurationError, FinalReviewError
-from .models import Confidence, OfflineEnricherMode, ProviderKind, ScanScope, Severity
-
-
+from rich.table import Table
 
 from . import __version__
+from .config import AppSettings, load_settings, resolve_api_key_env
+from .exceptions import ConfigurationError, FinalReviewError
+from .models import Confidence, OfflineEnricherMode, ProviderKind, ScanScope, Severity
+from .providers import PROVIDER_CATALOG
+from .reporting import print_console_report
+from .runner import run_scan
 
 app = typer.Typer(help="CI-first agentic vulnerability scanner.")
-
+providers_app = typer.Typer(help="Provider utilities.")
+app.add_typer(providers_app, name="providers")
 console = Console()
 
 
@@ -131,6 +133,60 @@ def scan(
     except FinalReviewError as exc:
         console.print(f"[red]Runtime error:[/red] {exc}")
         raise typer.Exit(code=2) from exc
+
+
+@providers_app.command("list")
+def list_providers() -> None:
+    """List supported providers and required extras."""
+    table = Table(title="Supported providers")
+    table.add_column("Provider")
+    table.add_column("Extra")
+    table.add_column("API Key Env")
+    table.add_column("Notes")
+    for provider_kind, metadata in PROVIDER_CATALOG.items():
+        table.add_row(
+            provider_kind.value,
+            metadata["extra"] or "-",
+            metadata["api_key_env"] or "-",
+            metadata["notes"],
+        )
+    console.print(table)
+
+
+@app.command()
+def doctor(
+    path: Path = typer.Argument(Path("."), exists=True, file_okay=False, dir_okay=True),
+    provider: ProviderKind = typer.Option(ProviderKind.NONE),
+    model: str | None = typer.Option(None),
+) -> None:
+    """Check local environment and provider prerequisites."""
+    table = Table(title="finalreview doctor")
+    table.add_column("Check")
+    table.add_column("Result")
+    table.add_row("Version", __version__)
+    table.add_row("Python", platform.python_version())
+    table.add_row("Platform", platform.platform())
+    table.add_row("Scan path", str(path.resolve()))
+    table.add_row("Provider", provider.value)
+    table.add_row("Model", model or "-")
+
+    package_checks = {
+        ProviderKind.OPENAI: "openai",
+        ProviderKind.AZURE_OPENAI: "openai",
+        ProviderKind.OPENAI_COMPATIBLE: "openai",
+        ProviderKind.ANTHROPIC: "anthropic",
+        ProviderKind.GOOGLE: "google.genai",
+    }
+    package_name = package_checks.get(provider)
+    if package_name:
+        table.add_row(
+            "Provider SDK",
+            "installed" if find_spec(package_name) else f"missing ({package_name})",
+        )
+        env_name = resolve_api_key_env(provider, None)
+        table.add_row("API key env", env_name or "-")
+        table.add_row("API key present", "yes" if env_name and os.getenv(env_name) else "no")
+    console.print(table)
 
 
 @app.callback()
